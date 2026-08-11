@@ -10,12 +10,18 @@ import 'services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: AdminFirebaseOptions.web);
-  runApp(const AdminApp());
+  Object? startupError;
+  try {
+    await Firebase.initializeApp(options: AdminFirebaseOptions.web);
+  } catch (error) {
+    startupError = error;
+  }
+  runApp(AdminApp(startupError: startupError));
 }
 
 class AdminApp extends StatelessWidget {
-  const AdminApp({super.key});
+  const AdminApp({super.key, this.startupError});
+  final Object? startupError;
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'CornGuard Admin',
@@ -26,7 +32,9 @@ class AdminApp extends StatelessWidget {
       colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF176B4D)),
       fontFamily: 'Georgia',
     ),
-    home: const AuthGate(),
+    home: startupError == null
+        ? const AuthGate()
+        : _StartupError(startupError!),
   );
 }
 
@@ -250,8 +258,8 @@ class _Navigation extends StatelessWidget {
                   letterSpacing: 2,
                 ),
               ),
-              ],
-            ),
+            ],
+          ),
         ),
         for (var i = 0; i < labels.length; i++)
           ListTile(
@@ -282,108 +290,95 @@ class _Navigation extends StatelessWidget {
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
   @override
-  Widget build(BuildContext context) => StreamBuilder<List<ManagedUser>>(
-    stream: AdminDataService.instance.watchUsers(),
-    builder: (context, usersSnap) => StreamBuilder<List<DetectionRecord>>(
-      stream: AdminDataService.instance.watchDetections(),
-      builder: (context, detectionSnap) {
-        if (usersSnap.hasError || detectionSnap.hasError)
-          return const _Message('Unable to read live Firebase data.');
-        if (!usersSnap.hasData || !detectionSnap.hasData)
-          return const Center(child: CircularProgressIndicator());
-        final users = usersSnap.data!;
-        final records = detectionSnap.data!;
-        final healthy = records
-            .where((r) => r.diseaseName.toLowerCase().contains('healthy'))
-            .length;
-        final rejected = records
-            .where((r) => r.diseaseName.toLowerCase().contains('not corn'))
-            .length;
-        final counts = <String, int>{};
-        for (final record in records)
-          counts[record.diseaseName] = (counts[record.diseaseName] ?? 0) + 1;
-        return _Scroll(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _LiveBadge(),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _Metric(
-                    'Registered users',
-                    users.length,
-                    Icons.people_outline,
-                    const Color(0xFF176B4D),
-                  ),
-                  _Metric(
-                    'Active users',
-                    users.where((u) => u.status == 'active').length,
-                    Icons.radio_button_checked,
-                    const Color(0xFF3E7CB1),
-                  ),
-                  _Metric(
-                    'Detection results',
-                    records.length,
-                    Icons.analytics_outlined,
-                    const Color(0xFFC77D2B),
-                  ),
-                  _Metric(
-                    'Healthy leaves',
-                    healthy,
-                    Icons.spa_outlined,
-                    const Color(0xFF5F9E62),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 20,
-                runSpacing: 20,
-                children: [
-                  _Panel(
-                    title: 'Disease distribution',
-                    child: SizedBox(
-                      width: 520,
-                      child: counts.isEmpty
-                          ? const _Message('No detection data yet.')
-                          : Column(
-                              children: [
-                                for (final item in counts.entries)
-                                  _Bar(item.key, item.value, records.length),
-                              ],
-                            ),
-                    ),
-                  ),
-                  _Panel(
-                    title: 'Quality signals',
-                    child: SizedBox(
-                      width: 260,
-                      child: Column(
-                        children: [
-                          _Signal('Non-corn rejections', rejected),
-                          _Signal(
-                            'Other classifications',
-                            records.length - healthy - rejected,
+  Widget build(BuildContext context) => StreamBuilder<List<DetectionRecord>>(
+    stream: AdminDataService.instance.watchDetections(),
+    builder: (context, detectionSnap) {
+      if (detectionSnap.hasError) {
+        return _FirebaseError(detectionSnap.error!);
+      }
+      if (!detectionSnap.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final records = detectionSnap.data!;
+      final healthy = records
+          .where((r) => r.diseaseName.toLowerCase().contains('healthy'))
+          .length;
+      final rejected = records
+          .where((r) => r.diseaseName.toLowerCase().contains('not corn'))
+          .length;
+      final counts = <String, int>{};
+      for (final record in records) {
+        counts[record.diseaseName] = (counts[record.diseaseName] ?? 0) + 1;
+      }
+      return _Scroll(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _LiveBadge(),
+            const SizedBox(height: 24),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _Metric(
+                  'Detection results',
+                  records.length,
+                  Icons.analytics_outlined,
+                  const Color(0xFFC77D2B),
+                ),
+                _Metric(
+                  'Healthy leaves',
+                  healthy,
+                  Icons.spa_outlined,
+                  const Color(0xFF5F9E62),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Wrap(
+              spacing: 20,
+              runSpacing: 20,
+              children: [
+                _Panel(
+                  title: 'Disease distribution',
+                  child: SizedBox(
+                    width: 520,
+                    child: counts.isEmpty
+                        ? const _Message('No detection data yet.')
+                        : Column(
+                            children: [
+                              for (final item in counts.entries)
+                                _Bar(item.key, item.value, records.length),
+                            ],
                           ),
-                        ],
-                      ),
+                  ),
+                ),
+                _Panel(
+                  title: 'Quality signals',
+                  child: SizedBox(
+                    width: 260,
+                    child: Column(
+                      children: [
+                        _Signal('Non-corn rejections', rejected),
+                        _Signal(
+                          'Other classifications',
+                          records.length - healthy - rejected,
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _Panel(
-                title: 'Recent detection activity',
-                child: _DetectionList(records.take(6).toList()),
-              ),
-            ],
-          ),
-        );
-      },
-    ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _Panel(
+              title: 'Recent detection activity',
+              child: _DetectionList(records.take(6).toList()),
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
 
@@ -399,9 +394,10 @@ class _UsersPageState extends State<UsersPage> {
   Widget build(BuildContext context) => StreamBuilder<List<ManagedUser>>(
     stream: AdminDataService.instance.watchUsers(),
     builder: (context, snap) {
-      if (snap.hasError) return const _Message('Unable to load users.');
-      if (!snap.hasData)
+      if (snap.hasError) return _FirebaseError(snap.error!);
+      if (!snap.hasData) {
         return const Center(child: CircularProgressIndicator());
+      }
       final users = snap.data!
           .where(
             (u) => '${u.username} ${u.email}'.toLowerCase().contains(
@@ -463,15 +459,17 @@ class _UsersPageState extends State<UsersPage> {
     if (confirmed != true || !mounted) return;
     try {
       await AdminDataService.instance.deleteUser(user.uid);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User deletion completed.')),
         );
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Deletion failed: $error')));
+      }
     }
   }
 }
@@ -482,10 +480,10 @@ class DetectionsPage extends StatelessWidget {
   Widget build(BuildContext context) => StreamBuilder<List<DetectionRecord>>(
     stream: AdminDataService.instance.watchDetections(),
     builder: (context, snap) {
-      if (snap.hasError)
-        return const _Message('Unable to load detection records.');
-      if (!snap.hasData)
+      if (snap.hasError) return _FirebaseError(snap.error!);
+      if (!snap.hasData) {
         return const Center(child: CircularProgressIndicator());
+      }
       final records = [...snap.data!]
         ..sort(
           (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
@@ -520,8 +518,9 @@ class _SettingsPageState extends State<SettingsPage> {
         .doc(AdminAuthService.instance.currentUser?.uid)
         .get()
         .then((doc) {
-          if (mounted)
+          if (mounted) {
             username.text = doc.data()?['username'] as String? ?? 'admin';
+          }
         });
   }
 
@@ -574,15 +573,17 @@ class _SettingsPageState extends State<SettingsPage> {
         password: password.text,
       );
       password.clear();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Credentials updated.')));
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -748,18 +749,10 @@ class _DetectionList extends StatelessWidget {
             for (final item in items)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFFE7F2E8),
-                  child: Icon(
-                    item.diseaseName.toLowerCase().contains('healthy')
-                        ? Icons.spa_outlined
-                        : Icons.warning_amber_outlined,
-                    color: const Color(0xFF176B4D),
-                  ),
-                ),
+                leading: _DetectionThumb(item),
                 title: Text(item.diseaseName),
                 subtitle: Text(
-                  'User ${item.uid} | ${(item.confidence * 100).toStringAsFixed(1)}% confidence',
+                  'User ${item.uid.isEmpty ? 'Unknown' : item.uid} | ${(item.confidence * 100).toStringAsFixed(1)}% confidence',
                 ),
                 trailing: Text(
                   item.createdAt == null
@@ -769,6 +762,35 @@ class _DetectionList extends StatelessWidget {
               ),
           ],
         );
+}
+
+class _DetectionThumb extends StatelessWidget {
+  const _DetectionThumb(this.item);
+  final DetectionRecord item;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = CircleAvatar(
+      backgroundColor: const Color(0xFFE7F2E8),
+      child: Icon(
+        item.diseaseName.toLowerCase().contains('healthy')
+            ? Icons.spa_outlined
+            : Icons.warning_amber_outlined,
+        color: const Color(0xFF176B4D),
+      ),
+    );
+    if (item.imageUrl.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        item.imageUrl,
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
 }
 
 class _UserRow extends StatelessWidget {
@@ -804,4 +826,25 @@ class _Message extends StatelessWidget {
       child: Text(text, style: const TextStyle(color: Colors.black54)),
     ),
   );
+}
+
+class _StartupError extends StatelessWidget {
+  const _StartupError(this.error);
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: _Message(
+      'Firebase initialization failed. Check the web configuration and reload.\n$error',
+    ),
+  );
+}
+
+class _FirebaseError extends StatelessWidget {
+  const _FirebaseError(this.error);
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) =>
+      _Message(AdminDataService.instance.describeError(error));
 }

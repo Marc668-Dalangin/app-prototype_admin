@@ -7,6 +7,20 @@ DateTime? readDate(Map<String, dynamic> data, String key) {
   return null;
 }
 
+String readString(
+  Map<String, dynamic> data,
+  String key, [
+  String fallback = '',
+]) {
+  final value = data[key];
+  return value is String && value.trim().isNotEmpty ? value : fallback;
+}
+
+double readDouble(Map<String, dynamic> data, String key) {
+  final value = data[key];
+  return value is num ? value.toDouble() : 0;
+}
+
 class AdminProfile {
   const AdminProfile({
     required this.uid,
@@ -22,8 +36,8 @@ class AdminProfile {
     final data = doc.data() ?? <String, dynamic>{};
     return AdminProfile(
       uid: doc.id,
-      username: data['username'] as String? ?? 'admin',
-      email: data['email'] as String? ?? '',
+      username: readString(data, 'username', 'admin'),
+      email: readString(data, 'email'),
     );
   }
 }
@@ -49,11 +63,11 @@ class ManagedUser {
     final data = doc.data() ?? <String, dynamic>{};
     return ManagedUser(
       uid: doc.id,
-      username: data['username'] as String? ?? 'Unnamed user',
-      email: data['email'] as String? ?? '',
+      username: readString(data, 'username', 'Unnamed user'),
+      email: readString(data, 'email'),
       createdAt: readDate(data, 'createdAt') ?? readDate(data, 'createdAtMs'),
       lastSeen: readDate(data, 'lastSeen') ?? readDate(data, 'lastLoginAt'),
-      status: data['status'] as String? ?? 'active',
+      status: readString(data, 'status', 'active'),
     );
   }
 }
@@ -79,10 +93,10 @@ class DetectionRecord {
     final data = doc.data() ?? <String, dynamic>{};
     return DetectionRecord(
       id: doc.id,
-      uid: data['uid'] as String? ?? doc.reference.parent.parent?.id ?? '',
-      diseaseName: data['diseaseName'] as String? ?? 'Unknown',
-      confidence: (data['confidence'] as num?)?.toDouble() ?? 0,
-      imageUrl: data['imageUrl'] as String? ?? '',
+      uid: readString(data, 'uid', doc.reference.parent.parent?.id ?? ''),
+      diseaseName: readString(data, 'diseaseName', 'Unknown'),
+      confidence: readDouble(data, 'confidence'),
+      imageUrl: readString(data, 'imageUrl'),
       createdAt:
           readDate(data, 'createdAtServer') ?? readDate(data, 'createdAtMs'),
     );
