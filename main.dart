@@ -292,6 +292,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => StreamBuilder<List<DetectionRecord>>(
     stream: AdminDataService.instance.watchDetections(),
+    initialData: AdminDataService.instance.latestDetections,
     builder: (context, detectionSnap) {
       if (detectionSnap.hasError) {
         return _FirebaseError(detectionSnap.error!);
@@ -479,6 +480,7 @@ class DetectionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => StreamBuilder<List<DetectionRecord>>(
     stream: AdminDataService.instance.watchDetections(),
+    initialData: AdminDataService.instance.latestDetections,
     builder: (context, snap) {
       if (snap.hasError) return _FirebaseError(snap.error!);
       if (!snap.hasData) {
@@ -752,8 +754,15 @@ class _DetectionList extends StatelessWidget {
                 leading: _DetectionThumb(item),
                 title: Text(item.diseaseName),
                 subtitle: Text(
-                  'User ${item.uid.isEmpty ? 'Unknown' : item.uid} | ${(item.confidence * 100).toStringAsFixed(1)}% confidence',
+                  '${item.username.isNotEmpty
+                      ? item.username
+                      : item.email.isNotEmpty
+                      ? item.email
+                      : item.uid.isEmpty
+                      ? 'Unknown user'
+                      : 'User ${item.uid}'} | ${(item.confidence * 100).toStringAsFixed(1)}% confidence',
                 ),
+                isThreeLine: true,
                 trailing: Text(
                   item.createdAt == null
                       ? 'Pending'

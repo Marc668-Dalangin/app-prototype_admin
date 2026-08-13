@@ -79,6 +79,10 @@ class DetectionRecord {
     required this.diseaseName,
     required this.confidence,
     required this.imageUrl,
+    required this.storagePath,
+    required this.localImagePath,
+    required this.username,
+    required this.email,
     required this.createdAt,
   });
 
@@ -87,9 +91,15 @@ class DetectionRecord {
   final String diseaseName;
   final double confidence;
   final String imageUrl;
+  final String storagePath;
+  final String localImagePath;
+  final String username;
+  final String email;
   final DateTime? createdAt;
 
-  factory DetectionRecord.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory DetectionRecord.fromAnalysisDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data() ?? <String, dynamic>{};
     return DetectionRecord(
       id: doc.id,
@@ -97,8 +107,33 @@ class DetectionRecord {
       diseaseName: readString(data, 'diseaseName', 'Unknown'),
       confidence: readDouble(data, 'confidence'),
       imageUrl: readString(data, 'imageUrl'),
+      storagePath: readString(data, 'storagePath'),
+      localImagePath: '',
+      username: readString(data, 'username'),
+      email: readString(data, 'email'),
       createdAt:
           readDate(data, 'createdAtServer') ?? readDate(data, 'createdAtMs'),
+    );
+  }
+
+  factory DetectionRecord.fromHistoryDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? <String, dynamic>{};
+    return DetectionRecord(
+      id: doc.id,
+      uid: readString(data, 'uid', doc.reference.parent.parent?.id ?? ''),
+      diseaseName: readString(data, 'diseaseName', 'Unknown'),
+      confidence: readDouble(data, 'confidence'),
+      imageUrl: readString(data, 'imageUrl'),
+      storagePath: readString(data, 'storagePath'),
+      localImagePath: readString(data, 'localImagePath'),
+      username: readString(data, 'username'),
+      email: readString(data, 'email'),
+      createdAt:
+          readDate(data, 'detectedAt') ??
+          readDate(data, 'localDetectedAt') ??
+          readDate(data, 'createdAtMs'),
     );
   }
 }
