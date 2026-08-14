@@ -316,10 +316,10 @@ class DashboardPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _LiveBadge(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 21),
             Wrap(
-              spacing: 16,
-              runSpacing: 16,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 _Metric(
                   'Detection results',
@@ -335,29 +335,32 @@ class DashboardPage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Wrap(
-              spacing: 20,
-              runSpacing: 20,
+              spacing: 16,
+              runSpacing: 16,
               children: [
                 _Panel(
                   title: 'Disease distribution',
                   child: SizedBox(
-                    width: 520,
+                    width: 516,
                     child: counts.isEmpty
                         ? const _Message('No detection data yet.')
-                        : Column(
-                            children: [
-                              for (final item in counts.entries)
-                                _Bar(item.key, item.value, records.length),
-                            ],
+                        : SizedBox(
+                            height: 108,
+                            child: ListView(
+                              children: [
+                                for (final item in counts.entries)
+                                  _Bar(item.key, item.value, records.length),
+                              ],
+                            ),
                           ),
                   ),
                 ),
                 _Panel(
                   title: 'Quality signals',
                   child: SizedBox(
-                    width: 260,
+                    width: 256,
                     child: Column(
                       children: [
                         _Signal('Non-corn rejections', rejected),
@@ -371,7 +374,7 @@ class DashboardPage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _Panel(
               title: 'Recent detection activity',
               child: _DetectionList(records.take(6).toList()),
@@ -606,7 +609,7 @@ class _Panel extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(22),
+    padding: const EdgeInsets.all(21),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
@@ -624,7 +627,7 @@ class _Panel extends StatelessWidget {
               color: Color(0xFF123C2F),
             ),
           ),
-        if (title.isNotEmpty) const SizedBox(height: 18),
+        if (title.isNotEmpty) const SizedBox(height: 17),
         child,
       ],
     ),
@@ -639,7 +642,7 @@ class _Metric extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 230,
+    width: 229,
     child: _Panel(
       title: '',
       child: Row(
@@ -649,7 +652,7 @@ class _Metric extends StatelessWidget {
             foregroundColor: color,
             child: Icon(icon),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 13),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -676,7 +679,7 @@ class _Bar extends StatelessWidget {
   final int max;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.only(bottom: 13),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -687,10 +690,10 @@ class _Bar extends StatelessWidget {
             Text('$value', style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         LinearProgressIndicator(
           value: max == 0 ? 0 : value / max,
-          minHeight: 8,
+          minHeight: 7,
           borderRadius: BorderRadius.circular(8),
           color: const Color(0xFF3F9B63),
           backgroundColor: const Color(0xFFE4EEE6),
@@ -706,7 +709,7 @@ class _Signal extends StatelessWidget {
   final int value;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
+    padding: const EdgeInsets.only(bottom: 17),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -726,7 +729,7 @@ class _LiveBadge extends StatelessWidget {
   Widget build(BuildContext context) => const Row(
     children: [
       Icon(Icons.circle, size: 10, color: Color(0xFF3F9B63)),
-      SizedBox(width: 8),
+      SizedBox(width: 7),
       Text(
         'LIVE FIRESTORE DATA',
         style: TextStyle(
@@ -746,30 +749,33 @@ class _DetectionList extends StatelessWidget {
   @override
   Widget build(BuildContext context) => items.isEmpty
       ? const _Message('No detection records yet.')
-      : Column(
-          children: [
-            for (final item in items)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: _DetectionThumb(item),
-                title: Text(item.diseaseName),
-                subtitle: Text(
-                  '${item.username.isNotEmpty
-                      ? item.username
-                      : item.email.isNotEmpty
-                      ? item.email
-                      : item.uid.isEmpty
-                      ? 'Unknown user'
-                      : 'User ${item.uid}'} | ${(item.confidence * 100).toStringAsFixed(1)}% confidence',
+      : SizedBox(
+          height: 210,
+          child: ListView(
+            children: [
+              for (final item in items)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: _DetectionThumb(item),
+                  title: Text(item.diseaseName),
+                  subtitle: Text(
+                    '${item.username.isNotEmpty
+                        ? item.username
+                        : item.email.isNotEmpty
+                        ? item.email
+                        : item.uid.isEmpty
+                        ? 'Unknown user'
+                        : 'User ${item.uid}'} | ${(item.confidence * 100).toStringAsFixed(1)}% confidence',
+                  ),
+                  isThreeLine: true,
+                  trailing: Text(
+                    item.createdAt == null
+                        ? 'Pending'
+                        : '${item.createdAt!.day}/${item.createdAt!.month}',
+                  ),
                 ),
-                isThreeLine: true,
-                trailing: Text(
-                  item.createdAt == null
-                      ? 'Pending'
-                      : '${item.createdAt!.day}/${item.createdAt!.month}',
-                ),
-              ),
-          ],
+            ],
+          ),
         );
 }
 
@@ -793,8 +799,8 @@ class _DetectionThumb extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
         item.imageUrl,
-        width: 48,
-        height: 48,
+        width: 47,
+        height: 47,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => fallback,
       ),
