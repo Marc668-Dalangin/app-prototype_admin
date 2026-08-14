@@ -266,17 +266,23 @@ class _Navigation extends StatelessWidget {
             leading: Icon(
               icons[i],
               color: selected == i
-                  ? const Color(0xFF123C2F)
+                  ? const Color(0xFFF59E0B)
                   : const Color(0xFFB7CFC3),
             ),
             title: Text(
               labels[i],
               style: TextStyle(
-                color: selected == i ? const Color(0xFF123C2F) : Colors.white,
+                fontWeight: FontWeight.w700,
+                color: selected == i ? const Color(0xFFF59E0B) : Colors.white,
               ),
             ),
             selected: selected == i,
-            selectedTileColor: const Color(0xFFB7E3C6),
+            selectedTileColor: const Color(0xFF123C2F),
+            tileColor: const Color(0xFF123C2F),
+            textColor: selected == i ? const Color(0xFFF59E0B) : Colors.white,
+            iconColor: selected == i
+                ? const Color(0xFFF59E0B)
+                : const Color(0xFFB7CFC3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
