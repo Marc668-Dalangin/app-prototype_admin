@@ -24,7 +24,7 @@ class AdminApp extends StatelessWidget {
   final Object? startupError;
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'CornGuard Admin',
+    title: 'Corn Guard Admin',
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
       useMaterial3: true,
@@ -140,11 +140,6 @@ class _LoginPageState extends State<LoginPage> {
                       : const Text('Sign in'),
                 ),
               ),
-              const SizedBox(height: 18),
-              const Text(
-                'Initial account: admin / admin123',
-                style: TextStyle(color: Colors.black54),
-              ),
             ],
           ),
         ),
@@ -161,7 +156,7 @@ class _BrandMark extends StatelessWidget {
       Icon(Icons.eco, color: Color(0xFF176B4D), size: 34),
       SizedBox(width: 10),
       Text(
-        'CORNGUARD',
+        'CORN GUARD',
         style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.bold),
       ),
     ],
@@ -251,7 +246,7 @@ class _Navigation extends StatelessWidget {
               Icon(Icons.eco, color: Color(0xFFB7E3C6)),
               SizedBox(width: 10),
               Text(
-                'CORNGUARD',
+                'CORN GUARD',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
