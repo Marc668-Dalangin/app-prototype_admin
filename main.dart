@@ -313,74 +313,74 @@ class DashboardPage extends StatelessWidget {
         counts[record.diseaseName] = (counts[record.diseaseName] ?? 0) + 1;
       }
       return _Scroll(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _LiveBadge(),
-            const SizedBox(height: 21),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _Metric(
-                  'Detection results',
-                  records.length,
-                  Icons.analytics_outlined,
-                  const Color(0xFFC77D2B),
-                ),
-                _Metric(
-                  'Healthy leaves',
-                  healthy,
-                  Icons.spa_outlined,
-                  const Color(0xFF5F9E62),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                _Panel(
-                  title: 'Disease distribution',
-                  child: SizedBox(
-                    width: 516,
-                    child: counts.isEmpty
-                        ? const _Message('No detection data yet.')
-                        : SizedBox(
-                            height: 108,
-                            child: ListView(
-                              children: [
-                                for (final item in counts.entries)
-                                  _Bar(item.key, item.value, records.length),
-                              ],
-                            ),
-                          ),
+        child: SelectionArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _Metric(
+                    'Detection results',
+                    records.length,
+                    Icons.analytics_outlined,
+                    const Color(0xFFC77D2B),
                   ),
-                ),
-                _Panel(
-                  title: 'Quality signals',
-                  child: SizedBox(
-                    width: 256,
-                    child: Column(
-                      children: [
-                        _Signal('Non-corn rejections', rejected),
-                        _Signal(
-                          'Other classifications',
-                          records.length - healthy - rejected,
-                        ),
-                      ],
+                  _Metric(
+                    'Healthy leaves',
+                    healthy,
+                    Icons.spa_outlined,
+                    const Color(0xFF5F9E62),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _Panel(
+                    title: 'Disease distribution',
+                    child: SizedBox(
+                      width: 516,
+                      child: counts.isEmpty
+                          ? const _Message('No detection data yet.')
+                          : SizedBox(
+                              height: 108,
+                              child: ListView(
+                                children: [
+                                  for (final item in counts.entries)
+                                    _Bar(item.key, item.value, records.length),
+                                ],
+                              ),
+                            ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _Panel(
-              title: 'Recent detection activity',
-              child: _DetectionList(records.take(6).toList()),
-            ),
-          ],
+                  _Panel(
+                    title: 'Quality signals',
+                    child: SizedBox(
+                      width: 256,
+                      child: Column(
+                        children: [
+                          _Signal('Non-corn rejections', rejected),
+                          _Signal(
+                            'Other classifications',
+                            records.length - healthy - rejected,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _Panel(
+                title: 'Recent detection activity',
+                child: _DetectionList(records.take(6).toList()),
+              ),
+            ],
+          ),
         ),
       );
     },
@@ -721,26 +721,6 @@ class _Signal extends StatelessWidget {
         ),
       ],
     ),
-  );
-}
-
-class _LiveBadge extends StatelessWidget {
-  const _LiveBadge();
-  @override
-  Widget build(BuildContext context) => const Row(
-    children: [
-      Icon(Icons.circle, size: 10, color: Color(0xFF3F9B63)),
-      SizedBox(width: 7),
-      Text(
-        'LIVE FIRESTORE DATA',
-        style: TextStyle(
-          fontSize: 12,
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF3F9B63),
-        ),
-      ),
-    ],
   );
 }
 
