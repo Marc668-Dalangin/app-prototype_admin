@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/admin_models.dart';
+import 'admin_data_service.dart';
 
 class AdminAuthService {
   AdminAuthService._();
@@ -9,14 +11,21 @@ class AdminAuthService {
 
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
+  String? _pendingSignOutMessage;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
+  String? get pendingSignOutMessage => _pendingSignOutMessage;
+
+  Future<void> configureSessionPersistence() async {
+    if (kIsWeb) await _auth.setPersistence(Persistence.SESSION);
+  }
 
   String _emailForUsername(String username) =>
       '${username.trim().toLowerCase()}@corn-disease-app.local';
 
   Future<AdminProfile> signIn(String username, String password) async {
+    _pendingSignOutMessage = null;
     final normalized = username.trim().toLowerCase();
     if (normalized.isEmpty || password.isEmpty) {
       throw const FormatException('Enter both username and password.');
@@ -65,7 +74,7 @@ class AdminAuthService {
   Future<AdminProfile> _requireAdmin(User user) async {
     final doc = await _firestore.collection('admin_users').doc(user.uid).get();
     if (!doc.exists || doc.data()?['role'] != 'admin') {
-      await _auth.signOut();
+      await signOut();
       throw const AuthException(
         'This account is not authorized for the admin panel.',
       );
@@ -99,7 +108,11 @@ class AdminAuthService {
     });
   }
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut({String? loginMessage}) async {
+    _pendingSignOutMessage = loginMessage;
+    AdminDataService.instance.clearSessionCache();
+    await _auth.signOut();
+  }
 
   String _messageFor(FirebaseAuthException error) {
     switch (error.code) {

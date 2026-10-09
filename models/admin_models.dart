@@ -2,8 +2,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 DateTime? readDate(Map<String, dynamic> data, String key) {
   final value = data[key];
-  if (value is Timestamp) return value.toDate();
-  if (value is num) return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  if (value is Timestamp) {
+    try {
+      return value.toDate();
+    } on Object {
+      return null;
+    }
+  }
+  if (value is num && value.isFinite) {
+    try {
+      return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    } on RangeError {
+      return null;
+    }
+  }
+  if (value is String) {
+    final parsedDate = DateTime.tryParse(value);
+    if (parsedDate != null) return parsedDate;
+    final milliseconds = num.tryParse(value);
+    if (milliseconds != null && milliseconds.isFinite) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(milliseconds.toInt());
+      } on RangeError {
+        return null;
+      }
+    }
+  }
   return null;
 }
 
@@ -18,7 +42,30 @@ String readString(
 
 double readDouble(Map<String, dynamic> data, String key) {
   final value = data[key];
-  return value is num ? value.toDouble() : 0;
+  if (value is num && value.isFinite) return value.toDouble();
+  if (value is String) {
+    final parsed = double.tryParse(value);
+    if (parsed != null && parsed.isFinite) return parsed;
+  }
+  return 0;
+}
+
+Object? normalizeFirestoreValue(Object? value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is Map) {
+    return Map<String, dynamic>.unmodifiable({
+      for (final entry in value.entries)
+        '${entry.key}': normalizeFirestoreValue(entry.value),
+    });
+  }
+  if (value is Iterable) {
+    final normalized = value.map(normalizeFirestoreValue).toList();
+    if (normalized.every((item) => item is String)) {
+      return List<String>.unmodifiable(normalized.whereType<String>());
+    }
+    return List<Object?>.unmodifiable(normalized);
+  }
+  return value;
 }
 
 class AdminProfile {
@@ -45,6 +92,7 @@ class AdminProfile {
 class ManagedUser {
   const ManagedUser({
     required this.uid,
+    required this.displayName,
     required this.username,
     required this.email,
     required this.createdAt,
@@ -53,6 +101,7 @@ class ManagedUser {
   });
 
   final String uid;
+  final String displayName;
   final String username;
   final String email;
   final DateTime? createdAt;
@@ -63,7 +112,12 @@ class ManagedUser {
     final data = doc.data() ?? <String, dynamic>{};
     return ManagedUser(
       uid: doc.id,
-      username: readString(data, 'username', 'Unnamed user'),
+      displayName: readString(data, 'displayName'),
+      username: readString(
+        data,
+        'username',
+        readString(data, 'displayName', 'Unnamed user'),
+      ),
       email: readString(data, 'email'),
       createdAt: readDate(data, 'createdAt') ?? readDate(data, 'createdAtMs'),
       lastSeen: readDate(data, 'lastSeen') ?? readDate(data, 'lastLoginAt'),
@@ -84,6 +138,7 @@ class DetectionRecord {
     required this.username,
     required this.email,
     required this.createdAt,
+    required this.analysisDetails,
   });
 
   final String id;
@@ -96,6 +151,7 @@ class DetectionRecord {
   final String username;
   final String email;
   final DateTime? createdAt;
+  final Map<String, dynamic> analysisDetails;
 
   factory DetectionRecord.fromAnalysisDoc(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -103,7 +159,19 @@ class DetectionRecord {
     final data = doc.data() ?? <String, dynamic>{};
     return DetectionRecord(
       id: doc.id,
-      uid: readString(data, 'uid', doc.reference.parent.parent?.id ?? ''),
+      uid: readString(
+        data,
+        'uid',
+        readString(
+          data,
+          'userId',
+          readString(
+            data,
+            'userAccount',
+            readString(data, 'user_id', doc.reference.parent.parent?.id ?? ''),
+          ),
+        ),
+      ),
       diseaseName: readString(data, 'diseaseName', 'Unknown'),
       confidence: readDouble(data, 'confidence'),
       imageUrl: readString(data, 'imageUrl'),
@@ -113,6 +181,7 @@ class DetectionRecord {
       email: readString(data, 'email'),
       createdAt:
           readDate(data, 'createdAtServer') ?? readDate(data, 'createdAtMs'),
+      analysisDetails: _analysisDetails(data),
     );
   }
 
@@ -122,7 +191,19 @@ class DetectionRecord {
     final data = doc.data() ?? <String, dynamic>{};
     return DetectionRecord(
       id: doc.id,
-      uid: readString(data, 'uid', doc.reference.parent.parent?.id ?? ''),
+      uid: readString(
+        data,
+        'uid',
+        readString(
+          data,
+          'userId',
+          readString(
+            data,
+            'userAccount',
+            readString(data, 'user_id', doc.reference.parent.parent?.id ?? ''),
+          ),
+        ),
+      ),
       diseaseName: readString(data, 'diseaseName', 'Unknown'),
       confidence: readDouble(data, 'confidence'),
       imageUrl: readString(data, 'imageUrl'),
@@ -134,6 +215,94 @@ class DetectionRecord {
           readDate(data, 'detectedAt') ??
           readDate(data, 'localDetectedAt') ??
           readDate(data, 'createdAtMs'),
+      analysisDetails: _analysisDetails(data),
     );
+  }
+
+  factory DetectionRecord.fromDetectionDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? <String, dynamic>{};
+    final parentUserId = doc.reference.parent.parent?.id ?? '';
+    return DetectionRecord(
+      id: doc.id,
+      uid: readString(
+        data,
+        'uid',
+        readString(
+          data,
+          'userId',
+          readString(
+            data,
+            'userAccount',
+            readString(data, 'user_id', parentUserId),
+          ),
+        ),
+      ),
+      diseaseName: readString(
+        data,
+        'diseaseName',
+        readString(
+          data,
+          'diagnosis',
+          readString(data, 'predictedClass', 'Unknown'),
+        ),
+      ),
+      confidence: readDouble(data, 'confidenceScore') != 0
+          ? readDouble(data, 'confidenceScore')
+          : readDouble(data, 'confidence'),
+      imageUrl: readString(data, 'imageUrl', readString(data, 'downloadUrl')),
+      storagePath: readString(
+        data,
+        'storagePath',
+        readString(data, 'imagePath'),
+      ),
+      localImagePath: readString(data, 'localImagePath'),
+      username: readString(data, 'username'),
+      email: readString(data, 'email'),
+      createdAt:
+          readDate(data, 'createdAt') ??
+          readDate(data, 'detectedAt') ??
+          readDate(data, 'timestamp') ??
+          readDate(data, 'createdAtServer') ??
+          readDate(data, 'createdAtMs'),
+      analysisDetails: _analysisDetails(data),
+    );
+  }
+
+  static Map<String, dynamic> _analysisDetails(Map<String, dynamic> data) {
+    const excludedFields = {
+      'uid',
+      'userid',
+      'useraccount',
+      'user_id',
+      'user_account',
+      'id',
+      'username',
+      'email',
+      'diseasename',
+      'diagnosis',
+      'predictedclass',
+      'confidence',
+      'confidencescore',
+      'imageurl',
+      'imagepath',
+      'downloadurl',
+      'storagepath',
+      'localimagepath',
+      'createdat',
+      'timestamp',
+      'createdatserver',
+      'createdatms',
+      'detectedat',
+      'localdetectedat',
+      'deletedat',
+    };
+    return Map.unmodifiable({
+      for (final entry in data.entries)
+        if (!excludedFields.contains(entry.key.toLowerCase()) &&
+            entry.value != null)
+          entry.key: normalizeFirestoreValue(entry.value),
+    });
   }
 }
